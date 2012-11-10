@@ -1,6 +1,6 @@
 menuconfig AW_AXP
 	bool "AXP Power drivers"
-	depends on REGULATOR
+	depends on REGULATOR && INPUT
 	default n
 	---help---
 	  This option allows you to select AXP power driver

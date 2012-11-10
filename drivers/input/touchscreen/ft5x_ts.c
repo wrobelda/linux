@@ -81,6 +81,7 @@ static LIST_HEAD (i2c_dev_list);
 static DEFINE_SPINLOCK(i2c_dev_list_lock);
 
 #define FT5X_NAME	"ft5x_ts"//"synaptics_i2c_rmi"//"synaptics-rmi-ts"//
+#define CHARDEV_NAME    "aw_i2c_ts"
 
 static struct i2c_client *this_client;
 #ifdef TOUCH_KEY_LIGHT_SUPPORT
@@ -110,11 +111,7 @@ static int key_val = 0;
 #endif
 ///////////////////////////////////////////////
 //specific tp related macro: need be configured for specific tp
-#ifdef CONFIG_ARCH_SUN4I
-#define CTP_IRQ_NO			(IRQ_EINT21)
-#elif defined(CONFIG_ARCH_SUN5I)
-#define CTP_IRQ_NO			(IRQ_EINT9)
-#endif
+#define CTP_IRQ_NO			(gpio_int_info[0].port_num)
 
 #define CTP_IRQ_MODE			(NEGATIVE_EDGE)
 #define CTP_NAME			FT5X_NAME
@@ -135,6 +132,7 @@ static int gpio_wakeup_hdle = 0;
 static int gpio_reset_hdle = 0;
 static int gpio_wakeup_enable = 1;
 static int gpio_reset_enable = 1;
+static user_gpio_set_t gpio_int_info[1];
 
 static int screen_max_x = 0;
 static int screen_max_y = 0;
@@ -202,7 +200,7 @@ static void ctp_clear_penirq(void)
  *              0:      success;
  *              others: fail;
  */
-static int ctp_set_irq_mode(char *major_key , char *subkey, int ext_int_num, ext_int_mode int_mode)
+static int ctp_set_irq_mode(char *major_key, char *subkey, ext_int_mode int_mode)
 {
 	int ret = 0;
 	__u32 reg_num = 0;
@@ -221,13 +219,16 @@ static int ctp_set_irq_mode(char *major_key , char *subkey, int ext_int_num, ext
 		ret = -1;
 		goto request_tp_int_port_failed;
 	}
+	gpio_get_one_pin_status(gpio_int_hdle, gpio_int_info, subkey, 1);
+	pr_info("%s, %d: gpio_int_info, port = %d, port_num = %d. \n", __func__, __LINE__, \
+		gpio_int_info[0].port, gpio_int_info[0].port_num);
 #endif
 
 #ifdef AW_GPIO_INT_API_ENABLE
 #else
 	pr_info(" INTERRUPT CONFIG\n");
-	reg_num = ext_int_num%8;
-	reg_addr = ext_int_num/8;
+	reg_num = (gpio_int_info[0].port_num)%8;
+	reg_addr = (gpio_int_info[0].port_num)/8;
 	reg_val = readl(gpio_addr + int_cfg_addr[reg_addr]);
 	reg_val &= (~(7 << (reg_num * 4)));
 	reg_val |= (int_mode << (reg_num * 4));
@@ -236,7 +237,7 @@ static int ctp_set_irq_mode(char *major_key , char *subkey, int ext_int_num, ext
 	ctp_clear_penirq();
 
 	reg_val = readl(gpio_addr+PIO_INT_CTRL_OFFSET);
-	reg_val |= (1 << ext_int_num);
+	reg_val |= (1 << (gpio_int_info[0].port_num));
 	writel(reg_val,gpio_addr+PIO_INT_CTRL_OFFSET);
 
 	udelay(1);
@@ -497,7 +498,7 @@ static void ctp_wakeup(void)
  *                    = 0; success;
  *                    < 0; err
  */
-static int ctp_detect(struct i2c_client *client, struct i2c_board_info *info)
+int ctp_detect(struct i2c_client *client, struct i2c_board_info *info)
 {
 	struct i2c_adapter *adapter = client->adapter;
 
@@ -1754,7 +1755,7 @@ ft5x_ts_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	pr_info("CONFIG_FT5X0X_MULTITOUCH is defined. \n");
 #endif
 
-	err = ctp_ops.set_irq_mode("ctp_para", "ctp_int_port", CTP_IRQ_NO, CTP_IRQ_MODE);
+	err = ctp_ops.set_irq_mode("ctp_para", "ctp_int_port", CTP_IRQ_MODE);
 	if(0 != err){
 		pr_info("%s:ctp_ops.set_irq_mode err. \n", __func__);
 		goto exit_set_irq_mode;
@@ -1811,9 +1812,12 @@ static int __devexit ft5x_ts_remove(struct i2c_client *client)
 	unregister_early_suspend(&ft5x_ts->early_suspend);
 #endif
 	input_unregister_device(ft5x_ts->input_dev);
+	unregister_chrdev(I2C_MAJOR, CHARDEV_NAME);
 	input_free_device(ft5x_ts->input_dev);
 	cancel_work_sync(&ft5x_ts->pen_event_work);
 	destroy_workqueue(ft5x_ts->ts_workqueue);
+	device_destroy(i2c_dev_class, MKDEV(I2C_MAJOR,client->adapter->nr));
+	class_destroy(i2c_dev_class);	
 	kfree(ft5x_ts);
 
 	i2c_set_clientdata(client, NULL);
@@ -1963,7 +1967,7 @@ static int __init ft5x_ts_init(void)
 
 	ft5x_ts_driver.detect = ctp_ops.ts_detect;
 
-	ret= register_chrdev(I2C_MAJOR,"aw_i2c_ts",&aw_i2c_ts_fops );
+	ret= register_chrdev(I2C_MAJOR,CHARDEV_NAME,&aw_i2c_ts_fops );
 	if(ret) {
 		pr_info(KERN_ERR "%s:register chrdev failed\n",__FILE__);
 		return ret;

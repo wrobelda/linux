@@ -1,10 +1,5 @@
 if ARCH_SUN5I
 
-config SUN5I_FPGA
-	bool "FPGA Board Support"
-	help
-	  Only for FPGA board. 
-
 config SW_DEBUG_UART
 	int "UART to use for low-level debug"
 	depends on DEBUG_LL
@@ -12,5 +7,18 @@ config SW_DEBUG_UART
 	help
 	  Choose the UART on which kernel low-level debug messages should be
 	  output.
+
+config SUNXI_IGNORE_ATAG_MEM
+	bool "Use AllWinner's hack to assume memory size"
+	default n
+
+config SUNXI_MALI_RESERVED_MEM
+	bool
+	depends on MALI
+	default y
+
+config MACH_SUN5I
+	bool
+	default y
 
 endif
