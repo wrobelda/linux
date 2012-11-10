@@ -1,25 +1,31 @@
 /*
-*************************************************************************************
-*                         			      Linux
-*					           AHCI SATA platform driver
-*
-*				        (c) Copyright 2006-2010, All winners Co,Ld.
-*							       All Rights Reserved
-*
-* File Name 	: sw_ahci_platform.c
-*
-* Author 		: danielwang
-*
-* Description 	: SATA Host Controller Driver for AW1623 Platform
-*
-* Notes         :
-*
-* History 		:
-*      <author>    		<time>       	<version >    		<desc>
-*    danielwang        2011-6-29            1.0          create this file
-*
-*************************************************************************************
-*/
+ * drivers/ata/sw_ahci_platform.c
+ *
+ * (C) Copyright 2007-2012
+ * Allwinner Technology Co., Ltd. <www.allwinnertech.com>
+ * Daniel Wang <danielwang@allwinnertech.com>
+ *
+ * Based on ahci_platform.c AHCI SATA platform driver
+ *
+ * Copyright 2004-2005  Red Hat, Inc.
+ *   Jeff Garzik <jgarzik@pobox.com>
+ * Copyright 2010  MontaVista Software, LLC.
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation; either version 2 of
+ * the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
+ * MA 02111-1307 USA
+ */
 
 #include <linux/kernel.h>
 #include <linux/gfp.h>
@@ -34,7 +40,6 @@
 
 #include <linux/clk.h>
 #include <mach/sys_config.h>
-#include <mach/platform.h>
 #include "sw_ahci_platform.h"
 
 static struct scsi_host_template ahci_platform_sht = {
@@ -191,7 +196,7 @@ static int sw_ahci_start(struct device *dev, void __iomem *addr)
 
 	sw_ahci_phy_init((unsigned int)addr);
 
-	pio_hdle = gpio_request_ex(sw_ahci_para_name, sw_ahci_gpio_name);
+	pio_hdle = gpio_request_ex(sw_ahci_para_name, NULL);
 	if(pio_hdle)
 	{
 		gpio_write_one_pin_value(pio_hdle, 1, sw_ahci_gpio_name);
@@ -228,7 +233,7 @@ static void sw_ahci_stop(struct device *dev)
     	goto err1;
 	}
 
-	pio_hdle = gpio_request_ex(sw_ahci_para_name, sw_ahci_gpio_name);
+	pio_hdle = gpio_request_ex(sw_ahci_para_name, NULL);
 	if(pio_hdle)
 	{
 		gpio_write_one_pin_value(pio_hdle, 0, sw_ahci_gpio_name);

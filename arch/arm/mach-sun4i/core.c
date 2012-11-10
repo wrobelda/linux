@@ -1,16 +1,24 @@
 /*
- * arch/arch/mach-sun4i/core.c
- * (C) Copyright 2010-2015
+ * arch/arm/mach-sun4i/core.c
+ *
+ * (C) Copyright 2007-2012
  * Allwinner Technology Co., Ltd. <www.allwinnertech.com>
  * Benn Huang <benn@allwinnertech.com>
- *
- * SUN4I machine core implementations
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
  * published by the Free Software Foundation; either version 2 of
  * the License, or (at your option) any later version.
  *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
+ * MA 02111-1307 USA
  */
 
 #include <linux/init.h>
@@ -48,6 +56,7 @@
 #include <mach/system.h>
 #include <mach/timex.h>
 #include <mach/sys_config.h>
+#include <mach/ramconsole.h>
 
 /**
  * Machine Implementations
@@ -65,6 +74,7 @@ void __init sw_core_map_io(void)
 	iotable_init(sw_io_desc, ARRAY_SIZE(sw_io_desc));
 }
 
+#ifdef CONFIG_SUNXI_IGNORE_ATAG_MEM
 static u32 DRAMC_get_dram_size(void)
 {
 	u32 reg_val;
@@ -95,80 +105,189 @@ static u32 DRAMC_get_dram_size(void)
 
 	return dram_size;
 }
+#endif
 
 static void __init sw_core_fixup(struct machine_desc *desc,
-                  struct tag *tags, char **cmdline,
+                  struct tag *t, char **cmdline,
                   struct meminfo *mi)
 {
-	u32 size;
+	u32 mali, size = 0;
+	int banks = 0;
+#if defined(CONFIG_MALI) || defined(CONFIG_MALI_MODULE)
+	mali = 64;
+#else
+	mali = 0;
+#endif
 
+#ifdef CONFIG_SUNXI_IGNORE_ATAG_MEM
 	size = DRAMC_get_dram_size();
-
-	early_printk("DRAM: %d", size);
 
 	if (size <= 512) {
 		mi->nr_banks = 1;
 		mi->bank[0].start = 0x40000000;
-		mi->bank[0].size = SZ_1M * (size - 64);
+		mi->bank[0].size = SZ_1M * (size - mali);
 	} else {
 		mi->nr_banks = 2;
 		mi->bank[0].start = 0x40000000;
-		mi->bank[0].size = SZ_1M * (512 - 64);
+		mi->bank[0].size = SZ_1M * (512 - mali);
 		mi->bank[1].start = 0x60000000;
 		mi->bank[1].size = SZ_1M * (size - 512);
 	}
-
-	pr_info("Total Detected Memory: %uMB with %d banks\n", size, mi->nr_banks);
+	banks = mi->nr_banks;
+#else
+	for (; t->hdr.size; t = tag_next(t)) if (t->hdr.tag == ATAG_MEM) {
+		size += t->u.mem.size / SZ_1M;
+		if (banks++ == 0)
+			t->u.mem.size -= mali * SZ_1M;
+	}
+#endif
+	pr_info("Total Detected Memory: %uMB with %d banks\n", size, banks);
+	if (mali > 0)
+		pr_info("%u MB reserved for MALI\n", mali);
 }
+
+#define pr_reserve_info(L, START, SIZE) \
+	pr_info("\t" L " : 0x%08x - 0x%08x  (%4d %s)\n", \
+		(u32)(START), (u32)((START) + (SIZE) - 1), \
+		(u32)((SIZE) < SZ_1M ? (SIZE) / SZ_1K : (SIZE) / SZ_1M), \
+		(SIZE) < SZ_1M ? "kB" : "MB")
+
+/* Only reserve certain important memory blocks if there are actually
+ * drivers which use them.
+ */
+
+#if defined CONFIG_FB || defined CONFIG_FB_MODULE
+/* The FB block is used by:
+ *
+ * - the sun4i framebuffer driver, drivers/video/sun4i/disp.
+ *
+ * fb_start, fb_size are used in a vast number of other places but for
+ * for platform-specific drivers, so we don't have to worry about them.
+ *
+ * The block will only be allocated if the disp_init/disp_init_enabled
+ * script key is set.
+ */
 
 unsigned long fb_start = (PLAT_PHYS_OFFSET + SZ_512M - SZ_64M - SZ_32M);
 unsigned long fb_size = SZ_32M;
 EXPORT_SYMBOL(fb_start);
 EXPORT_SYMBOL(fb_size);
 
+static void __init reserve_fb(void)
+{
+    char *script_base = (char *)(PAGE_OFFSET + 0x3000000);
+
+    if (sw_cfg_get_int(script_base, "disp_init", "disp_init_enable"))
+    {
+		memblock_reserve(fb_start, fb_size);
+		pr_reserve_info("LCD ", fb_start, fb_size);
+    }
+	else
+		fb_start = fb_size = 0;
+}
+
+#else
+static void __init reserve_fb(void) {}
+#endif
+
+#if defined CONFIG_SUN4I_G2D || defined CONFIG_SUN4I_G2D_MODULE
+/* The G2D block is used by:
+ *
+ * - the G2D engine, drivers/char/sun4i_g2d
+ *
+ * The block will only be allocated if the g2d_para/g2d_used
+ * script key is set.
+ */
+
 unsigned long g2d_start = (PLAT_PHYS_OFFSET + SZ_512M - SZ_128M);
 unsigned long g2d_size = SZ_1M * 16;
 EXPORT_SYMBOL(g2d_start);
 EXPORT_SYMBOL(g2d_size);
+
+static void __init reserve_g2d(void)
+{
+    char *script_base = (char *)(PAGE_OFFSET + 0x3000000);
+
+    if (sw_cfg_get_int(script_base, "g2d_para", "g2d_used"))
+    {
+		g2d_size = sw_cfg_get_int(script_base, "g2d_para", "g2d_size");
+		if ((g2d_size < 0) || (g2d_size > SW_G2D_MEM_MAX))
+			g2d_size = SW_G2D_MEM_MAX;
+
+		g2d_start = SW_G2D_MEM_BASE;
+		g2d_size = g2d_size;
+		memblock_reserve(g2d_start, g2d_size);
+
+		pr_reserve_info("G2D ", g2d_start, g2d_size);
+    }
+    else
+    	g2d_start = g2d_size = 0;
+}
+
+#else
+static void __init reserve_g2d(void) {}
+#endif
+
+#if defined CONFIG_VIDEO_DECODER_SUN4I || defined CONFIG_VIDEO_DECODER_SUN4I_MODULE
+/* The VE block is used by:
+ *
+ * - the Cedar video engine, drivers/media/video/sun4i
+ *
+ * ve_start, ve_size are also used by the contiguous-DMA module in
+ * drivers/media/video/videobuf-dma-contig.c, but that's SH-specific
+ * so we don't have to worry about it here.
+ */
 
 unsigned long ve_start = (PLAT_PHYS_OFFSET + SZ_64M);
 unsigned long ve_size = (SZ_64M + SZ_16M);
 EXPORT_SYMBOL(ve_start);
 EXPORT_SYMBOL(ve_size);
 
-static void __init sw_core_reserve(void)
+static void __init reserve_ve(void)
 {
-	memblock_reserve(SYS_CONFIG_MEMBASE, SYS_CONFIG_MEMSIZE);
-	memblock_reserve(fb_start, fb_size);
+    /* The users of the VE block aren't enabled via script flags, so if their
+     * driver gets compiled in we have to unconditionally reserve memory for
+     * them.
+     */
 	memblock_reserve(ve_start, SZ_64M);
 	memblock_reserve(ve_start + SZ_64M, SZ_16M);
 
-#if 0
-        int g2d_used = 0;
-        char *script_base = (char *)(PAGE_OFFSET + 0x3000000);
+	pr_reserve_info("VE  ", ve_start, ve_size);
+}
 
-        g2d_used = sw_cfg_get_int(script_base, "g2d_para", "g2d_used");
-
-	memblock_reserve(fb_start, fb_size);
-	memblock_reserve(SYS_CONFIG_MEMBASE, SYS_CONFIG_MEMSIZE);
-	memblock_reserve(ve_start, ve_start);
-
-        if (g2d_used) {
-                g2d_size = sw_cfg_get_int(script_base, "g2d_para", "g2d_size");
-                if (g2d_size < 0 || g2d_size > SW_G2D_MEM_MAX) {
-                        g2d_size = SW_G2D_MEM_MAX;
-                }
-                g2d_start = SW_G2D_MEM_BASE;
-                g2d_size = g2d_size;
-                memblock_reserve(g2d_start, g2d_size);
-        }
-
+#else
+static void __init reserve_ve(void) {}
 #endif
-	pr_info("Memory Reserved(in bytes):\n");
-	pr_info("\tLCD: 0x%08x, 0x%08x\n", (unsigned int)fb_start, (unsigned int)fb_size);
-	pr_info("\tSYS: 0x%08x, 0x%08x\n", (unsigned int)SYS_CONFIG_MEMBASE, (unsigned int)SYS_CONFIG_MEMSIZE);
-	pr_info("\tG2D: 0x%08x, 0x%08x\n", (unsigned int)g2d_start, (unsigned int)g2d_size);
-	pr_info("\tVE : 0x%08x, 0x%08x\n", (unsigned int)ve_start, (unsigned int)ve_size);
+
+#ifdef CONFIG_ANDROID_RAM_CONSOLE
+/* The RAMCONSOLE block is used by the Android RAM Console
+ *
+ * See drivers/staging/android/ram_console.c
+ */
+
+static void __init reserve_ramconsole(void)
+{
+	memblock_remove(SUN4I_RAMCONSOLE_START, SUN4I_RAMCONSOLE_SIZE);
+	pr_reserve_info("RAMCONSOLE", SUN4I_RAMCONSOLE_START, SUN4I_RAMCONSOLE_SIZE);
+}
+#else
+static void __init reserve_ramconsole(void) {}
+#endif
+
+static void reserve_sys(void)
+{
+	memblock_reserve(SYS_CONFIG_MEMBASE, SYS_CONFIG_MEMSIZE);
+	pr_reserve_info("SYS ", SYS_CONFIG_MEMBASE, SYS_CONFIG_MEMSIZE);
+}
+
+static void __init sw_core_reserve(void)
+{
+	pr_info("Memory Reserved:\n");
+	reserve_sys();
+	reserve_ve();
+	reserve_g2d();
+	reserve_fb();
+	reserve_ramconsole();
 }
 
 void sw_irq_ack(struct irq_data *irqd)
@@ -272,7 +391,7 @@ void __init sw_core_init_irq(void)
 
 
 
-/**
+/*
  * Global vars definitions
  *
  */
@@ -413,20 +532,22 @@ enum sw_ic_ver sw_get_ic_ver(void)
 	return MAGIC_VER_C;
 }
 EXPORT_SYMBOL(sw_get_ic_ver);
-/**
+
+/*
  * Arch Required Implementations
  *
  */
-//void arch_idle(void)
-//{
+#if 0
+void arch_idle(void)
+{
 
-//}
+}
 
-//void arch_reset(char mode, const char *cmd)
-//{
+void arch_reset(char mode, const char *cmd)
+{
 
-
-//}
+}
+#endif
 
 
 MACHINE_START(SUN4I, "sun4i")
@@ -439,4 +560,3 @@ MACHINE_START(SUN4I, "sun4i")
 	.init_machine   = sw_core_init,
 	.reserve        = sw_core_reserve,
 MACHINE_END
-

@@ -1,6 +1,6 @@
 if ARCH_SUN4I
 
-comment "Allwinner A1x options"
+comment "Allwinner A10 options"
 
 config TEGRA_FPGA
 	bool "FPGA Express support"
@@ -12,5 +12,9 @@ config SW_DEBUG_UART
 	help
 	  Choose the UART on which kernel low-level debug messages should be
 	  output.
+
+config SUNXI_IGNORE_ATAG_MEM
+	bool "Use AllWinner's hack to assume memory size"
+	default n
 
 endif

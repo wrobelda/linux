@@ -1,24 +1,26 @@
 /*
-********************************************************************************************************************
-*                                              usb controller
-*
-*                              (c) Copyright 2007-2009,
-*										All	Rights Reserved
-*
-* File Name 	: usbc.c
-*
-* Author 		: daniel
-*
-* Version 		: 1.0
-*
-* Date 			: 2009.09.01
-*
-* Description 	: 适用于sunii平台，USB公共操作部分
-*
-* History 		:
-*
-********************************************************************************************************************
-*/
+ * drivers/usb/sun4i_usb/usbc/usbc.c
+ *
+ * (C) Copyright 2007-2012
+ * Allwinner Technology Co., Ltd. <www.allwinnertech.com>
+ * daniel <daniel@allwinnertech.com>
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation; either version 2 of
+ * the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
+ * MA 02111-1307 USA
+ */
+
 
 #include  "usbc_i.h"
 
@@ -412,7 +414,7 @@ static void __USBC_ConfigFifo_TxEp_Default(__u32 usbc_base_addr)
 *
 * Arguments:
 *    hUSB           :  input.  USBC_open_otg获得的句柄, 记录了USBC所需要的一些关键数据
-*    is_double_fifo :  input.  是否使用硬件双fifo
+*    is_double_fifo :  input.  Whether to use hardware dual fifo
 *    fifo_size      :  input.  fifo大小 = 2的fifo_size次方
 *    fifo_addr      :  input.  fifo的起始地址 = fifo_addr * 8
 *

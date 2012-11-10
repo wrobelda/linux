@@ -1,20 +1,26 @@
 /*
-*********************************************************************************************************
-*                                                    LINUX-KERNEL
-*                                        AllWinner Linux Platform Develop Kits
-*                                                   Kernel Module
-*
-*                                    (c) Copyright 2006-2011, kevin.z China
-*                                             All Rights Reserved
-*
-* File    : ccmu_regs.h
-* By      : kevin.z
-* Version : v1.0
-* Date    : 2011-5-13 16:42
-* Descript: define registers for ccmu.
-* Update  : date                auther      ver     notes
-*********************************************************************************************************
-*/
+ * arch/arm/mach-sun5i/include/mach/ccmu_regs.h
+ *
+ * (C) Copyright 2007-2012
+ * Allwinner Technology Co., Ltd. <www.allwinnertech.com>
+ * Kevin Zhang <kevin@allwinnertech.com>
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation; either version 2 of
+ * the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
+ * MA 02111-1307 USA
+ */
+
 #ifndef __CCMU_REGS_H__
 #define __CCMU_REGS_H__
 
@@ -98,7 +104,8 @@ typedef struct __CCMU_PLL4_VE_REG0018
     __u32   FactorK:2;          //bit4,  PLL4 factor K
     __u32   reserved1:2;        //bit6,  reserved
     __u32   FactorN:5;          //bit8,  PLL4 factor N
-    __u32   reserved2:3;        //bit13, reserved
+    __u32   reserved2:1;        //bit13, reserved
+    __u32   PllSwitch:2;        //bit14, PLL4 output switch, 00-pll4, 01-pll3x2, 10/11-pll6
     __u32   FactorP:2;          //bit16, PLL4 output external divider P
     __u32   reserved3:1;        //bit18, reserved
     __u32   VCOGain:1;          //bit19, PLL4 VCO gain control
@@ -599,6 +606,7 @@ typedef struct __CCMU_REG_LIST
     volatile __ccmu_lvds_clk_reg014c_t      LvdsClk;    //0x014C, LVDS module clock control
     volatile __ccmu_hdmi_clk_reg0150_t      HdmiClk;    //0x0150, HDMI module clock control
     volatile __ccmu_mali400_clk_reg0154_t   MaliClk;    //0x0154, MALI400 module clock control
+    volatile __u32                          reserved21; //0x0158, reserved
     volatile __ccmu_mbus_clk_reg015c_t      MbusClk;    //0x015c, MBUS clock control
     volatile __ccmu_iep_clk_reg0160_t       IepClk;     //0x0160, IEP clock control
 

@@ -1,21 +1,30 @@
 /*
- * arch/arch/mach-sun4i/devices.c
- * (C) Copyright 2010-2015
+ * arch/arm/mach-sun4i/devices.c
+ *
+ * (C) Copyright 2007-2012
  * Allwinner Technology Co., Ltd. <www.allwinnertech.com>
  * Benn Huang <benn@allwinnertech.com>
- *
- * SUN4I platform devices
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
  * published by the Free Software Foundation; either version 2 of
  * the License, or (at your option) any later version.
  *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
+ * MA 02111-1307 USA
  */
 
 #include <linux/kernel.h>
 #include <linux/init.h>
 #include <linux/platform_device.h>
+#include <linux/platform_data/ram_console.h>
 #include <linux/serial_8250.h>
 #include <linux/clk.h>
 #include <linux/dma-mapping.h>
@@ -29,6 +38,7 @@
 #include <asm/setup.h>
 #include <mach/hardware.h>
 #include <mach/i2c.h>
+#include <mach/ramconsole.h>
 
 /* uart */
 static struct plat_serial8250_port debug_uart_platform_data[] = {
@@ -164,6 +174,37 @@ struct platform_device sun4i_twi2_device = {
 	},
 };
 
+#if defined(CONFIG_MALI_DRM) || defined(CONFIG_MALI_DRM_MODULE)
+static struct platform_device sun4i_device_mali_drm = {
+	.name = "mali_drm",
+	.id   = -1,
+};
+#endif
+
+/* ram console */
+#ifdef CONFIG_ANDROID_RAM_CONSOLE
+
+static struct resource sun4i_ramconsole_resources[] = {
+	{
+		.flags  = IORESOURCE_MEM,
+		.start  = SUN4I_RAMCONSOLE_START,
+		.end    = SUN4I_RAMCONSOLE_START + SUN4I_RAMCONSOLE_SIZE - 1,
+	},
+};
+
+static struct ram_console_platform_data sun4i_ramconsole_pdata;
+
+static struct platform_device sun4i_ramconsole = {
+	.name           = "ram_console",
+	.id             = -1,
+	.num_resources  = ARRAY_SIZE(sun4i_ramconsole_resources),
+	.resource       = sun4i_ramconsole_resources,
+	.dev            = {
+		.platform_data = &sun4i_ramconsole_pdata,
+	},
+};
+#endif
+
 static struct platform_device *sw_pdevs[] __initdata = {
 	&debug_uart,
 	&sw_pdev_dmac,
@@ -171,6 +212,12 @@ static struct platform_device *sw_pdevs[] __initdata = {
 	&sun4i_twi0_device,
 	&sun4i_twi1_device,
 	&sun4i_twi2_device,
+#if defined(CONFIG_MALI_DRM) || defined(CONFIG_MALI_DRM_MODULE)
+	&sun4i_device_mali_drm,
+#endif
+#ifdef CONFIG_ANDROID_RAM_CONSOLE
+	&sun4i_ramconsole,
+#endif
 };
 
 void __init sw_pdev_init(void)

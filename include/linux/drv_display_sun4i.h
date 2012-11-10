@@ -1,3 +1,25 @@
+/*
+ * include/linux/drv_display_sun4i.h
+ *
+ * (C) Copyright 2007-2012
+ * Allwinner Technology Co., Ltd. <www.allwinnertech.com>
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation; either version 2 of
+ * the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
+ * MA 02111-1307 USA
+ */
+
 #ifndef __DRV_DISPLAY_H__
 #define __DRV_DISPLAY_H__
 
@@ -765,7 +787,10 @@ typedef enum tag_DISP_CMD
 //---pwm --------
     DISP_CMD_PWM_SET_PARA = 0x300,
     DISP_CMD_PWM_GET_PARA = 0x301,
-}__disp_cmd_t;
+}__disP_cmd_t;
+
+
+#define GET_UMP_SECURE_ID _IOWR('m', 310, unsigned int)
 
 #define FBIOGET_LAYER_HDL_0 0x4700
 #define FBIOGET_LAYER_HDL_1 0x4701

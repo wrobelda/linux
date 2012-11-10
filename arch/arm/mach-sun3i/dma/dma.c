@@ -1,24 +1,31 @@
-/* linux/arch/arm/plat-sw/dma.c
+/*
+ * arch/arm/mach-sun3i/dma/dma.c
  *
- * Copyright (c) 2003-2005,2006 Simtec Electronics
- *	Ben Dooks <ben@simtec.co.uk>
+ * (C) Copyright 2007-2012
+ * Allwinner Technology Co., Ltd. <www.allwinnertech.com>
+ * Huang Xin <huangxin@allwinnertech.com>
  *
- * SW DMA core
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation; either version 2 of
+ * the License, or (at your option) any later version.
  *
- * http://armlinux.simtec.co.uk/
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
+ * GNU General Public License for more details.
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
-*/
-//#define DEBUG
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
+ * MA 02111-1307 USA
+ */
 
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/sched.h>
 #include <linux/spinlock.h>
 #include <linux/interrupt.h>
-#include <linux/sysdev.h>
 #include <linux/slab.h>
 #include <linux/errno.h>
 #include <linux/io.h>
@@ -33,6 +40,7 @@
 #include <mach/dma.h>
 #include <mach/dma_regs.h>
 
+#undef DEBUG
 
 /* io map for dma */
 static void __iomem *dma_base;
@@ -1070,7 +1078,7 @@ int sw_dma_free(unsigned int channel, struct sw_dma_client *client)
 
 EXPORT_SYMBOL(sw_dma_free);
 
-static int sw_dma_dostop(struct sw_dma_chan *chan)
+int sw_dma_dostop(struct sw_dma_chan *chan)
 {
 	unsigned long flags;
 	unsigned long tmp;
@@ -1095,6 +1103,7 @@ static int sw_dma_dostop(struct sw_dma_chan *chan)
 
 	return 0;
 }
+EXPORT_SYMBOL(sw_dma_dostop);
 
 static void sw_dma_waitforstop(struct sw_dma_chan *chan)
 {
@@ -1490,66 +1499,6 @@ int sw_dma_getcurposition(unsigned int channel, dma_addr_t *src, dma_addr_t *dst
 EXPORT_SYMBOL(sw_dma_getcurposition);
 
 
-/* system device class */
-
-#ifdef CONFIG_PM
-
-static struct sw_dma_chan *to_dma_chan(struct sys_device *dev)
-{
-	return container_of(dev, struct sw_dma_chan, dev);
-}
-
-static int sw_dma_suspend(struct sys_device *dev, pm_message_t state)
-{
-	struct sw_dma_chan *cp = to_dma_chan(dev);
-
-	printk(KERN_DEBUG "suspending dma channel %d\n", cp->number);
-
-	if (dma_rdreg(cp, SW_DMA_DCONF) & SW_DCONF_BUSY) {
-		/* the dma channel is still working, which is probably
-		 * a bad thing to do over suspend/resume. We stop the
-		 * channel and assume that the client is either going to
-		 * retry after resume, or that it is broken.
-		 */
-
-		printk(KERN_INFO "dma: stopping channel %d due to suspend\n",
-		       cp->number);
-
-		sw_dma_dostop(cp);
-	}
-
-	return 0;
-}
-
-static int sw_dma_resume(struct sys_device *dev)
-{
-#if 0
-	struct sw_dma_chan *cp = to_dma_chan(dev);
-	unsigned int no = cp->number | DMACH_LOW_LEVEL;
-
-	/* restore channel's hardware configuration */
-
-	if (!cp->in_use)
-		return 0;
-
-	printk(KERN_INFO "dma%d: restoring configuration\n", cp->number);
-
-	sw_dma_config(no, NULL);
-#endif
-	return 0;
-}
-
-#else
-#define sw_dma_suspend NULL
-#define sw_dma_resume  NULL
-#endif /* CONFIG_PM */
-
-struct sysdev_class dma_sysclass = {
-	.name		= "sw-dma",
-	.suspend	= sw_dma_suspend,
-	.resume		= sw_dma_resume,
-};
-
 /* kmem cache implementation */
 
 static void sw_dma_cache_ctor(void *p)
@@ -1559,40 +1508,6 @@ static void sw_dma_cache_ctor(void *p)
 
 /* initialisation code */
 
-static int __init sw_dma_sysclass_init(void)
-{
-	int ret = sysdev_class_register(&dma_sysclass);
-
-	if (ret != 0)
-		printk(KERN_ERR "dma sysclass registration failed\n");
-
-	return ret;
-}
-
-core_initcall(sw_dma_sysclass_init);
-
-static int __init sw_dma_sysdev_register(void)
-{
-	struct sw_dma_chan *cp = sw_chans;
-	int channel, ret;
-
-	for (channel = 0; channel < dma_channels; cp++, channel++) {
-		cp->dev.cls = &dma_sysclass;
-		cp->dev.id  = channel;
-		ret = sysdev_register(&cp->dev);
-
-		if (ret) {
-			printk(KERN_ERR "error registering dev for dma %d\n",
-			       channel);
- 			return ret;
-		}
-	}
-
-	return 0;
-}
-
-late_initcall(sw_dma_sysdev_register);
-
 int __init sw_dma_init(unsigned int channels, unsigned int irq,
 			    unsigned int stride)
 {
@@ -1600,7 +1515,7 @@ int __init sw_dma_init(unsigned int channels, unsigned int irq,
 	int channel;
 	int ret;
 
-	printk("SOFTWINNER DMA Driver, (c) 2003-2004,2006 Simtec Electronics\n");
+	printk("ALLWINNER DMA Driver, Allwinner Technology Co., Ltd.\n");
 
 	dma_channels = channels;
 	dma_base = (void __iomem *)SW_VA_DMAC_IO_BASE;

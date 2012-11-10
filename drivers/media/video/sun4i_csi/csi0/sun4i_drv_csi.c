@@ -1,4 +1,26 @@
 /*
+ * drivers/media/video/sun4i_csi/csi0/sun4i_drv_csi.c
+ *
+ * (C) Copyright 2007-2012
+ * Allwinner Technology Co., Ltd. <www.allwinnertech.com>
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation; either version 2 of
+ * the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
+ * MA 02111-1307 USA
+ */
+
+/*
  * Sun4i Camera Interface  driver
  * Author: raymonxiu
  */
@@ -240,6 +262,12 @@ static struct csi_fmt *get_format(struct v4l2_format *f)
 	return &formats[k];
 };
 
+void static inline bsp_csi_set_buffer_address(struct csi_dev *dev,__csi_buf_t buf, u32 addr)
+{
+	//bufer0a +4 = buffer0b, bufer0a +8 = buffer1a
+    W(dev->regs+CSI_REG_BUF_0_A + (buf<<2), addr); 
+}
+
 static inline void csi_set_addr(struct csi_dev *dev,struct csi_buffer *buffer)
 {
 	
@@ -475,6 +503,11 @@ static int update_ccm_info(struct csi_dev *dev , struct ccm_config *ccm_cfg)
 	 dev->avdd = ccm_cfg->avdd;
 	 dev->dvdd = ccm_cfg->dvdd;
 	 return v4l2_subdev_call(dev->sd,core,ioctl,CSI_SUBDEV_CMD_SET_INFO,dev->ccm_info);
+}
+
+void static inline bsp_csi_int_clear_status(struct csi_dev *dev,__csi_int_t interrupt)
+{
+    W(dev->regs+CSI_REG_INT_STATUS, interrupt);
 }
 
 static irqreturn_t csi_isr(int irq, void *priv)

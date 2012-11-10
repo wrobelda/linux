@@ -1,4 +1,26 @@
 /*
+ * drivers/media/video/sun4i_csi/include/sun4i_csi_core.h
+ *
+ * (C) Copyright 2007-2012
+ * Allwinner Technology Co., Ltd. <www.allwinnertech.com>
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation; either version 2 of
+ * the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
+ * MA 02111-1307 USA
+ */
+
+/*
  * Sun4i Camera core header file
  * Author:raymonxiu
 */
@@ -357,12 +379,8 @@ struct csi_dev {
 void  bsp_csi_open(struct csi_dev *dev);
 void  bsp_csi_close(struct csi_dev *dev);
 void  bsp_csi_configure(struct csi_dev *dev,__csi_conf_t *mode);
-void	inline  bsp_csi_set_buffer_address(struct csi_dev *dev,__csi_buf_t buf, u32 addr);
-u32		inline  bsp_csi_get_buffer_address(struct csi_dev *dev,__csi_buf_t buf);
 void  bsp_csi_double_buffer_enable(struct csi_dev *dev);
 void  bsp_csi_double_buffer_disable(struct csi_dev *dev);
-void	inline  bsp_csi_double_buffer_select_next(struct csi_dev *dev,__csi_double_buf_t type);
-void	inline  bsp_csi_double_buffer_get_status(struct csi_dev *dev,__csi_double_buf_status_t * status);
 void  bsp_csi_capture_video_start(struct csi_dev *dev);
 void  bsp_csi_capture_video_stop(struct csi_dev *dev);
 void  bsp_csi_capture_picture(struct csi_dev *dev);
@@ -371,7 +389,5 @@ void 	bsp_csi_set_size(struct csi_dev *dev, u32 length_h, u32 length_v, u32 buf_
 void 	bsp_csi_set_offset(struct csi_dev *dev,u32 start_h, u32 start_v);
 void  bsp_csi_int_enable(struct csi_dev *dev,__csi_int_t interrupt);
 void  bsp_csi_int_disable(struct csi_dev *dev,__csi_int_t interrupt);
-void 	inline 	bsp_csi_int_get_status(struct csi_dev *dev,__csi_int_status_t * status);
-void 	inline bsp_csi_int_clear_status(struct csi_dev *dev,__csi_int_t interrupt);
 
 #endif  /* _CSI_H_ */

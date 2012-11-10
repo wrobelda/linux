@@ -1,20 +1,25 @@
 /*
-*********************************************************************************************************
-*                                                    LINUX-KERNEL
-*                                        AllWinner Linux Platform Develop Kits
-*                                                   Kernel Module
-*
-*                                    (c) Copyright 2006-2011, kevin.z China
-*                                             All Rights Reserved
-*
-* File    : cpu-freq.c
-* By      : kevin.z
-* Version : v1.0
-* Date    : 2011-6-18 18:13
-* Descript: cpufreq driver on allwinner chips;
-* Update  : date                auther      ver     notes
-*********************************************************************************************************
-*/
+ * arch/arm/mach-sun4i/cpu-freq/cpu-freq.c
+ *
+ * (C) Copyright 2007-2012
+ * Allwinner Technology Co., Ltd. <www.allwinnertech.com>
+ * Kevin Zhang <kevin@allwinnertech.com>
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation; either version 2 of
+ * the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
+ * MA 02111-1307 USA
+ */
 
 #include <linux/init.h>
 #include <linux/module.h>
@@ -673,6 +678,10 @@ static int sun4i_cpufreq_resume(struct cpufreq_policy *policy)
 
 #endif  /* #ifdef CONFIG_PM */
 
+static struct freq_attr *sun4i_cpufreq_attr[] = {
+	&cpufreq_freq_attr_scaling_available_freqs,
+	NULL,
+};
 
 static struct cpufreq_driver sun4i_cpufreq_driver = {
 	.flags		= CPUFREQ_STICKY,
@@ -683,6 +692,7 @@ static struct cpufreq_driver sun4i_cpufreq_driver = {
 	.suspend	= sun4i_cpufreq_suspend,
 	.resume		= sun4i_cpufreq_resume,
 	.name		= "sun4i",
+	.attr		= sun4i_cpufreq_attr,
 };
 
 

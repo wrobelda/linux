@@ -1,25 +1,36 @@
 /*
-*********************************************************************************************************
-*                                                    LINUX-KERNEL
-*                                        AllWinner Linux Platform Develop Kits
-*                                                   Kernel Module
-*
-*                                    (c) Copyright 2006-2011, kevin.z China
-*                                             All Rights Reserved
-*
-* File    : aw_ccu.h
-* By      : kevin.z
-* Version : v1.0
-* Date    : 2011-5-13 18:52
-* Descript: ccu operation fucntion for allwinners chips.
-* Update  : date                auther      ver     notes
-*********************************************************************************************************
-*/
+ * arch/arm/mach-sun5i/include/mach/aw_ccu.h
+ *
+ * (C) Copyright 2007-2012
+ * Allwinner Technology Co., Ltd. <www.allwinnertech.com>
+ * Kevin Zhang <kevin@allwinnertech.com>
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation; either version 2 of
+ * the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
+ * MA 02111-1307 USA
+ */
+
 #ifndef __AW_CCU_H__
 #define __AW_CCU_H__
 
 #include <linux/kernel.h>
 #include <linux/string.h>
+
+/* define if need use pll6 to take the place of pll4,
+   this definition is significative on C ver. only */
+#define USE_PLL6M_REPLACE_PLL4      (1)
+
 
 /* define clock error type      */
 typedef enum __AW_CCU_ERR

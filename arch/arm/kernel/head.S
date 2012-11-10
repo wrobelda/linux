@@ -77,13 +77,17 @@ ENTRY(stext)
 	mov	r0, #0
 	b	_real_start
 
-#if CONFIG_CHIP_ID == 1123
+#if CONFIG_CHIP_ID == 1120
+#warning "chip id: 1120"
+1:	.long 0x1094
+	.long 0x40000000
+#elif CONFIG_CHIP_ID == 1123
 #warning "chip id: 1123"
-1:	.long 0xda7
+1:	.long 0x1008
 	.long 0x40000000
 #elif CONFIG_CHIP_ID == 1125
 #warning "chip id: 1125"
-1:      .long 0xda8
+1:      .long 0x102A
         .long 0x40000000
 #else
 #error "unsupport chip"

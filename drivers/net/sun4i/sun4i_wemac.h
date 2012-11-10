@@ -1,4 +1,26 @@
 /*
+ * drivers/net/sun4i/sun4i_wemac.h
+ *
+ * (C) Copyright 2007-2012
+ * Allwinner Technology Co., Ltd. <www.allwinnertech.com>
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation; either version 2 of
+ * the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
+ * MA 02111-1307 USA
+ */
+
+/*
  * wemac Ethernet
  */
 
@@ -158,7 +180,7 @@
 #define EMAC_RX_UCAD        1  //0: Not accept             1: Accept unicast Packets(default)
 #define EMAC_RX_DAF         1  //0: Normal(default)        1: DA Filtering
 #define EMAC_RX_MCO         1  //0: Not accept             1: Accept multicast Packets(default)
-#define EMAC_RX_MHF         1  //0: Disable(default)       1: Enable Hash filter 
+#define EMAC_RX_MHF         0  //0: Disable(default)       1: Enable Hash filter 
 #define EMAC_RX_BCO		    1  //0: Not accept             1: Accept Broadcast Packets(default)
 #define EMAC_RX_SAF         0  //0: Disable(default)       1: Enable SA Filtering
 #define EMAC_RX_SAIF        0  //0: Normal(default)        1: Inverse Filtering
