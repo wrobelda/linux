@@ -85,6 +85,21 @@
 		regulator-boot-on;
 	};
 
+	fingerprint {
+		compatible = "goodix,gf3626";
+
+		interrupt-parent = <&tlmm>;
+		interrupts = <23 IRQ_TYPE_EDGE_RISING>;
+
+		reset-gpios = <&tlmm 125 GPIO_ACTIVE_LOW>;
+		vdd-supply = <&vreg_l10a_3p0>;
+
+		firmware-name = "gfenu";
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&fp_int_default>;
+	};
+
 	gpio_keys: gpio-keys {
 		compatible = "gpio-keys";
 
@@ -316,7 +331,14 @@
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 		};
 
-		/* L10 is unused, L11 - lcx.lvl (ARC) */
+		vreg_l10a_3p0: ldo10 {
+			regulator-name = "vreg_l10a_3p0";
+			regulator-min-microvolt = <3008000>;
+			regulator-max-microvolt = <3008000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		};
+
+		/* L11 - lcx.lvl (ARC) */
 
 		vreg_l12a_1p8: ldo12 {
 			regulator-name = "vreg_l12a_1p8";
@@ -797,6 +819,13 @@
 		drive-strength = <16>;
 		output-low;
 		bias-pull-up;
+	};
+
+	fp_int_default: fp-int-default-state {
+		pins = "gpio23";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-pull-down;
 	};
 
 	wlan_en_state: wlan-default-state {
