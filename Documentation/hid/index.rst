@@ -20,3 +20,4 @@ Human Interface Devices (HID)
    intel-ish-hid
    intel-thc-hid
    amd-sfh-hid
+   xiaomi-pogo

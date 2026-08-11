@@ -29519,6 +29519,8 @@ M:	Dawid Wróbel <me@dawidwrobel.com>
 L:	linux-input@vger.kernel.org
 S:	Maintained
 F:	Documentation/devicetree/bindings/input/xiaomi,pad-5-keyboard.yaml
+F:	Documentation/hid/xiaomi-pogo.rst
+F:	Documentation/input/devices/xiaomi-keyboard.rst
 F:	drivers/hid/hid-xiaomi-pogo.c
 F:	drivers/input/misc/xiaomi_keyboard.c
 
