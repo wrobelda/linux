@@ -236,6 +236,17 @@ config INPUT_PMIC8XXX_PWRKEY
 	  To compile this driver as a module, choose M here: the
 	  module will be called pmic8xxx-pwrkey.
 
+config INPUT_XIAOMI_KEYBOARD
+	tristate "Xiaomi pogo-pin keyboard MCU control driver"
+	depends on INPUT && GPIOLIB
+	help
+	  Say Y here to enable the control driver for the pogo-pin keyboard
+	  MCU used with Xiaomi Mi Pad 5 series tablets. The driver power
+	  sequences the keyboard MCU and suspends it together with the
+	  system; the key events themselves arrive over USB.
+
+	  If unsure, say N.
+
 config INPUT_SPARCSPKR
 	tristate "SPARC Speaker support"
 	depends on PCI && SPARC64

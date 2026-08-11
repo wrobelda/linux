@@ -29519,6 +29519,7 @@ M:	Dawid Wróbel <me@dawidwrobel.com>
 L:	linux-input@vger.kernel.org
 S:	Maintained
 F:	Documentation/devicetree/bindings/input/xiaomi,pad-5-keyboard.yaml
+F:	drivers/input/misc/xiaomi_keyboard.c
 
 XILINX AMS DRIVER
 M:	Salih Erim <salih.erim@amd.com>
