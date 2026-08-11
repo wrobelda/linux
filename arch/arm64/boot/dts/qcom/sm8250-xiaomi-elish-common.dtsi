@@ -101,6 +101,20 @@
 		};
 	};
 
+	keyboard-controller {
+		compatible = "xiaomi,pad-5-keyboard";
+
+		pinctrl-names = "default", "sleep";
+		pinctrl-0 = <&xiaomi_keyboard_active>;
+		pinctrl-1 = <&xiaomi_keyboard_suspend>;
+
+		reset-gpios = <&tlmm 141 GPIO_ACTIVE_HIGH>;
+		irq-gpios = <&tlmm 83 GPIO_ACTIVE_HIGH>;
+		vdd-gpios = <&tlmm 127 GPIO_ACTIVE_HIGH>;
+
+		wakeup-source;
+	};
+
 	qca6390-pmu {
 		compatible = "qcom,qca6390-pmu";
 
@@ -807,6 +821,41 @@
 		drive-strength = <16>;
 		output-low;
 		bias-pull-up;
+	};
+
+	xiaomi_keyboard_active: xiaomi-keyboard-active-state {
+		en-pins {
+			pins = "gpio155";
+			function = "gpio";
+			drive-strength = <8>;
+			bias-pull-up;
+		};
+
+		/* GPIO 83 is an externally driven wake doorbell. Keep a
+		 * defined bias while the keyboard MCU is not driving it.
+		 */
+		int-pins {
+			pins = "gpio83";
+			function = "gpio";
+			drive-strength = <2>;
+			bias-pull-down;
+		};
+	};
+
+	xiaomi_keyboard_suspend: xiaomi-keyboard-suspend-state {
+		en-pins {
+			pins = "gpio155";
+			function = "gpio";
+			drive-strength = <8>;
+			bias-pull-down;
+		};
+
+		int-pins {
+			pins = "gpio83";
+			function = "gpio";
+			drive-strength = <2>;
+			bias-pull-down;
+		};
 	};
 };
 
