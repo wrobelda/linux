@@ -1,0 +1,70 @@
+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/input/xiaomi,pad-5-keyboard.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: Xiaomi Pad 5 keyboard MCU power controller
+
+maintainers:
+  - Dawid Wróbel <me@dawidwrobel.com>
+
+description:
+  The Xiaomi Pad 5 family contains a keyboard MCU in the tablet.  The MCU
+  exposes the detachable keyboard through USB HID, while a platform device
+  controls its supply, reset, enable, and wake signals.
+
+properties:
+  compatible:
+    const: xiaomi,pad-5-keyboard
+
+  reset-gpios:
+    maxItems: 1
+    description: GPIO which releases the keyboard MCU from reset
+
+  irq-gpios:
+    maxItems: 1
+    description: GPIO receiving the wake doorbell from the keyboard MCU
+
+  vdd-gpios:
+    maxItems: 1
+    description: GPIO which enables the keyboard MCU supply
+
+  pinctrl-names:
+    items:
+      - const: default
+      - const: sleep
+
+  pinctrl-0: true
+  pinctrl-1: true
+
+  wakeup-source: true
+
+required:
+  - compatible
+  - reset-gpios
+  - irq-gpios
+  - vdd-gpios
+  - pinctrl-names
+  - pinctrl-0
+  - pinctrl-1
+
+additionalProperties: false
+
+examples:
+  - |
+    #include <dt-bindings/gpio/gpio.h>
+
+    keyboard-controller {
+        compatible = "xiaomi,pad-5-keyboard";
+
+        pinctrl-names = "default", "sleep";
+        pinctrl-0 = <&keyboard_active>;
+        pinctrl-1 = <&keyboard_sleep>;
+
+        reset-gpios = <&tlmm 141 GPIO_ACTIVE_HIGH>;
+        irq-gpios = <&tlmm 83 GPIO_ACTIVE_HIGH>;
+        vdd-gpios = <&tlmm 127 GPIO_ACTIVE_HIGH>;
+
+        wakeup-source;
+    };
