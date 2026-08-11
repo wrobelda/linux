@@ -542,6 +542,17 @@ config HID_XIAOMI
 	  Adds support for side buttons of Xiaomi Mi Dual Mode Wireless
 	  Mouse Silent Edition.
 
+config HID_XIAOMI_POGO
+	tristate "Xiaomi Pad pogo keyboard bridge"
+	depends on USB_HID
+	help
+	  Support for keyboard attachment reporting by the USB HID bridge in
+	  Xiaomi Pad pogo keyboards. The bridge remains present when the keyboard
+	  is detached, so the driver queries its vendor protocol and reports the
+	  attachment state through the input subsystem.
+
+	  Say Y here if you have a Xiaomi Pad with a detachable pogo keyboard.
+
 config HID_GYRATION
 	tristate "Gyration remote control"
 	help
