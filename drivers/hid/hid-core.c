@@ -882,6 +882,12 @@ static void hid_scan_collection(struct hid_parser *parser, unsigned type)
 					(HID_UP_GOOGLEVENDOR | 0x0001))
 				parser->device->group =
 					HID_GROUP_VIVALDI;
+
+	if (hid->vendor == USB_VENDOR_ID_XIAOMI_POGO &&
+	    hid->product == USB_DEVICE_ID_XIAOMI_POGO_BRIDGE &&
+	    (parser->global.usage_page == 0xff01 ||
+	     parser->global.usage_page == 0xff02))
+		hid->group = HID_GROUP_XIAOMI_POGO;
 }
 
 static int hid_scan_main(struct hid_parser *parser, struct hid_item *item)
