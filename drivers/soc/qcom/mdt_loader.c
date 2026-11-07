@@ -17,6 +17,7 @@
 #include <linux/firmware/qcom/qcom_scm.h>
 #include <linux/sizes.h>
 #include <linux/slab.h>
+#include <linux/unaligned.h>
 #include <linux/soc/qcom/mdt_loader.h>
 
 static bool mdt_header_valid(const struct firmware *fw)
@@ -52,18 +53,86 @@ static bool mdt_header_valid(const struct firmware *fw)
 	return true;
 }
 
-/*
- * Does this segment contribute bytes to the image file?
- *
- * A different question from mdt_phdr_loadable(), which asks whether a segment
- * is placed into the target memory region. A hash segment is not placed there
- * -- it is metadata, handled by qcom_mdt_read_metadata() -- but it is very much
- * part of the file, as is anything else carrying payload. Consumers that
- * reassemble the image rather than load it want this one.
- */
-static bool mdt_phdr_has_payload(const struct elf32_phdr *phdr)
+/* QSEECOM image assembly accepts both ELF classes; PAS remains ELF32. */
+struct mdt_image_header {
+	const void *phdrs;
+	unsigned int phnum;
+	bool elf64;
+};
+
+static int mdt_image_parse(const struct firmware *fw, struct mdt_image_header *hdr)
 {
-	return phdr->p_filesz;
+	u64 phoff;
+	size_t phsize;
+
+	if (fw->size < EI_NIDENT || memcmp(fw->data, ELFMAG, SELFMAG) ||
+	    fw->data[EI_DATA] != ELFDATA2LSB)
+		return -EINVAL;
+
+	switch (fw->data[EI_CLASS]) {
+	case ELFCLASS32: {
+		const struct elf32_hdr *ehdr = (const void *)fw->data;
+
+		if (!mdt_header_valid(fw))
+			return -EINVAL;
+		phoff = get_unaligned_le32(&ehdr->e_phoff);
+		phsize = sizeof(struct elf32_phdr);
+		hdr->phnum = get_unaligned_le16(&ehdr->e_phnum);
+		hdr->elf64 = false;
+		break;
+	}
+	case ELFCLASS64: {
+		const struct elf64_hdr *ehdr = (const void *)fw->data;
+
+		if (fw->size < sizeof(*ehdr) ||
+		    get_unaligned_le16(&ehdr->e_phentsize) != sizeof(struct elf64_phdr))
+			return -EINVAL;
+		phoff = get_unaligned_le64(&ehdr->e_phoff);
+		phsize = sizeof(struct elf64_phdr);
+		hdr->phnum = get_unaligned_le16(&ehdr->e_phnum);
+		hdr->elf64 = true;
+		break;
+	}
+	default:
+		return -EINVAL;
+	}
+
+	if (phoff > fw->size ||
+	    hdr->phnum > (fw->size - phoff) / phsize)
+		return -EINVAL;
+
+	hdr->phdrs = fw->data + phoff;
+	return 0;
+}
+
+static void mdt_image_segment(const struct mdt_image_header *hdr, unsigned int i,
+			      u64 *offset, u64 *size)
+{
+	if (hdr->elf64) {
+		const void *phdr = hdr->phdrs + i * sizeof(struct elf64_phdr);
+
+		*offset = get_unaligned_le64(phdr + offsetof(struct elf64_phdr, p_offset));
+		*size = get_unaligned_le64(phdr + offsetof(struct elf64_phdr, p_filesz));
+	} else {
+		const void *phdr = hdr->phdrs + i * sizeof(struct elf32_phdr);
+
+		*offset = get_unaligned_le32(phdr + offsetof(struct elf32_phdr, p_offset));
+		*size = get_unaligned_le32(phdr + offsetof(struct elf32_phdr, p_filesz));
+	}
+}
+
+static bool mdt_image_split(const struct firmware *fw,
+			    const struct mdt_image_header *hdr)
+{
+	u64 offset, size;
+	unsigned int i;
+
+	for (i = 0; i < hdr->phnum; i++) {
+		mdt_image_segment(hdr, i, &offset, &size);
+		if (size && (offset > fw->size || size > fw->size - offset))
+			return true;
+	}
+	return false;
 }
 
 static bool mdt_phdr_loadable(const struct elf32_phdr *phdr)
@@ -80,11 +149,10 @@ static bool mdt_phdr_loadable(const struct elf32_phdr *phdr)
 	return true;
 }
 
-static ssize_t mdt_load_split_segment(void *ptr, const struct elf32_phdr *phdrs,
+static ssize_t mdt_load_split_segment(void *ptr, size_t filesz,
 				      unsigned int segment, const char *fw_name,
 				      struct device *dev)
 {
-	const struct elf32_phdr *phdr = &phdrs[segment];
 	const struct firmware *seg_fw;
 	ssize_t ret;
 
@@ -97,13 +165,13 @@ static ssize_t mdt_load_split_segment(void *ptr, const struct elf32_phdr *phdrs,
 
 	sprintf(seg_name + strlen(fw_name) - 3, "b%02d", segment);
 	ret = request_firmware_into_buf(&seg_fw, seg_name, dev,
-					ptr, phdr->p_filesz);
+					ptr, filesz);
 	if (ret) {
 		dev_err(dev, "error %zd loading %s\n", ret, seg_name);
 		return ret;
 	}
 
-	if (seg_fw->size != phdr->p_filesz) {
+	if (seg_fw->size != filesz) {
 		dev_err(dev,
 			"failed to load segment %d from truncated file %s\n",
 			segment, seg_name);
@@ -198,31 +266,27 @@ static bool qcom_mdt_bins_are_split(const struct firmware *fw)
  */
 ssize_t qcom_mdt_get_image_size(const struct firmware *fw)
 {
-	const struct elf32_phdr *phdrs;
-	const struct elf32_hdr *ehdr;
+	struct mdt_image_header hdr;
+	u64 offset, filesz;
 	size_t size;
 	int i;
 
-	if (!mdt_header_valid(fw))
+	if (mdt_image_parse(fw, &hdr) || fw->size > SSIZE_MAX)
 		return -EINVAL;
 
 	/* A single-file image already is the blob. */
-	if (!qcom_mdt_bins_are_split(fw))
+	if (!mdt_image_split(fw, &hdr))
 		return fw->size;
-
-	ehdr = (struct elf32_hdr *)fw->data;
-	phdrs = (struct elf32_phdr *)(fw->data + ehdr->e_phoff);
 
 	size = fw->size;
 
-	for (i = 0; i < ehdr->e_phnum; i++) {
-		if (!mdt_phdr_has_payload(&phdrs[i]))
-			continue;
-
-		if (size + phdrs[i].p_filesz < size)
+	for (i = 0; i < hdr.phnum; i++) {
+		mdt_image_segment(&hdr, i, &offset, &filesz);
+		/* Split segment names have a two-digit index (.b00 to .b99). */
+		if ((filesz && i > 99) || filesz > SSIZE_MAX - size)
 			return -EINVAL;
 
-		size += phdrs[i].p_filesz;
+		size += filesz;
 	}
 
 	return size;
@@ -244,8 +308,8 @@ EXPORT_SYMBOL_GPL(qcom_mdt_get_image_size);
  * at all: a segment may declare p_offset 0, overlapping the headers, and two
  * segments may declare the same p_offset.
  *
- * Selected by mdt_phdr_has_payload() rather than mdt_phdr_loadable(): this is
- * not a loading operation, so the question is which segments are part of the
+ * Select every segment with file payload rather than mdt_phdr_loadable(): this
+ * is not a loading operation, so the question is which segments are part of the
  * file, not which are placed in memory. The hash in particular is skipped by
  * the latter but belongs here -- the secure world is handed the image whole and
  * authenticates it whole, so dropping a segment shifts everything after it and
@@ -256,8 +320,8 @@ EXPORT_SYMBOL_GPL(qcom_mdt_get_image_size);
 ssize_t qcom_mdt_read_image(struct device *dev, const struct firmware *fw,
 			    const char *fw_name, void *mem, size_t mem_size)
 {
-	const struct elf32_phdr *phdrs;
-	const struct elf32_hdr *ehdr;
+	struct mdt_image_header hdr;
+	u64 offset, filesz;
 	size_t off;
 	ssize_t ret;
 	int i;
@@ -269,24 +333,27 @@ ssize_t qcom_mdt_read_image(struct device *dev, const struct firmware *fw,
 	if (mem_size < (size_t)ret)
 		return -ENOSPC;
 
+	ret = mdt_image_parse(fw, &hdr);
+	if (ret)
+		return ret;
+
 	memcpy(mem, fw->data, fw->size);
 
-	if (!qcom_mdt_bins_are_split(fw))
+	if (!mdt_image_split(fw, &hdr))
 		return fw->size;
 
-	ehdr = (struct elf32_hdr *)fw->data;
-	phdrs = (struct elf32_phdr *)(fw->data + ehdr->e_phoff);
 	off = fw->size;
 
-	for (i = 0; i < ehdr->e_phnum; i++) {
-		if (!mdt_phdr_has_payload(&phdrs[i]))
+	for (i = 0; i < hdr.phnum; i++) {
+		mdt_image_segment(&hdr, i, &offset, &filesz);
+		if (!filesz)
 			continue;
 
-		ret = mdt_load_split_segment(mem + off, phdrs, i, fw_name, dev);
+		ret = mdt_load_split_segment(mem + off, filesz, i, fw_name, dev);
 		if (ret)
 			return ret;
 
-		off += phdrs[i].p_filesz;
+		off += filesz;
 	}
 
 	return off;
@@ -369,7 +436,8 @@ void *qcom_mdt_read_metadata(const struct firmware *fw, size_t *data_len,
 		memcpy(data + ehdr_size, fw->data + hash_offset, hash_size);
 	} else {
 		/* Hash is in its own segment, beyond the loaded file */
-		ret = mdt_load_split_segment(data + ehdr_size, phdrs, hash_segment, fw_name, dev);
+		ret = mdt_load_split_segment(data + ehdr_size, phdrs[hash_segment].p_filesz,
+					     hash_segment, fw_name, dev);
 		if (ret) {
 			kfree(data);
 			return ERR_PTR(ret);
@@ -548,7 +616,7 @@ int qcom_mdt_load_no_init(struct device *dev, const struct firmware *fw,
 			memcpy(ptr, fw->data + phdr->p_offset, phdr->p_filesz);
 		} else if (phdr->p_filesz) {
 			/* Firmware not large enough, load split-out segments */
-			ret = mdt_load_split_segment(ptr, phdrs, i, fw_name, dev);
+			ret = mdt_load_split_segment(ptr, phdrs[i].p_filesz, i, fw_name, dev);
 			if (ret)
 				break;
 		}
